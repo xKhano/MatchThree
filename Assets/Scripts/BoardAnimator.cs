@@ -32,7 +32,7 @@ public class BoardAnimator : MonoBehaviour
         }
     }
 
-    public IEnumerator BlastAnimation(HashSet<Vector2Int> blastIndexes)
+    public void BlastAnimation(HashSet<Vector2Int> blastIndexes)
     {
         foreach (var VARIABLE in blastIndexes)
         {
@@ -41,8 +41,8 @@ public class BoardAnimator : MonoBehaviour
             vfx.transform.position = worldPos;
             vfx.GetComponent<ObjectPoolVFX>().Pool = _vfxObjectPooler;
             _tileObjectPooler.Release(_elements[VARIABLE.x, VARIABLE.y].gameObject);
+            _elements[VARIABLE.x, VARIABLE.y] = null;
         }
-        yield return new WaitForSeconds(_boardAnimatorConfig.CellBlastDuration);
     }
     
     public IEnumerator SlideAnimation(Vector2Int posA, Board.MoveDirection direction)
@@ -102,4 +102,53 @@ public class BoardAnimator : MonoBehaviour
     }
 
     private Vector3 GetCellWorldPosition(Vector2Int position) => _grid.GetCellCenterWorld((Vector3Int)position);
+
+    public IEnumerator CollapseAnimation(uint[,] cells)
+    {
+        int width = cells.GetLength(0);
+        int height = cells.GetLength(1);
+
+        float duration = _boardAnimatorConfig.CellFallDuration;
+
+        for (int x = 0; x < width; x++)
+        {
+            int writeY = 0;
+
+            for (int readY = 0; readY < height; readY++)
+            {
+                if (_elements[x, readY] != null)
+                {
+                    if (readY != writeY)
+                    {
+                        Transform falling = _elements[x, readY];
+                        _elements[x, writeY] = falling;
+                        _elements[x, readY] = null;
+
+                        Vector3 targetPos = GetCellWorldPosition(new Vector2Int(x, writeY));
+                        Tween.Position(falling, targetPos, duration);
+                    }
+
+                    writeY++;
+                }
+            }
+
+            for (int y = writeY; y < height; y++)
+            {
+                SpriteRenderer newTile = _tileObjectPooler.Get().GetComponent<SpriteRenderer>();
+                newTile.transform.SetParent(transform);
+
+                _elements[x, y] = newTile.transform;
+
+                newTile.sprite = _boardConfig.GetSprite(cells[x, y]);
+                
+                Vector3 spawnPos = GetCellWorldPosition(new Vector2Int(x, height + (y - writeY)));
+                newTile.transform.position = spawnPos;
+
+                Vector3 targetPos = GetCellWorldPosition(new Vector2Int(x, y));
+                Tween.Position(newTile.transform, targetPos, duration);
+            }
+        }
+
+        yield return new WaitForSeconds(duration);
+    }
 }

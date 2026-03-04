@@ -7,6 +7,6 @@ namespace DefaultNamespace
     {
         [field: SerializeField] public float CellSlideDuration { get; private set; } = .5f;
         [field: SerializeField] public float CellBlastDuration { get; private set; } = .25f;
-
+        [field:SerializeField] public float CellFallDuration { get; private set; }
     }
 }

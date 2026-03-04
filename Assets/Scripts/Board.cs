@@ -16,6 +16,7 @@ public sealed class Board : MonoBehaviour
     [SerializeField] private Grid _grid;
     private Camera _cam;
     private static uint[,] _cells;
+    private static uint[] fallRecord;
     private static HashSet<Vector2Int> hitMask;
     private static HashSet<Vector2Int> blastMask;
     private Coroutine currentCoroutine;
@@ -29,6 +30,7 @@ public sealed class Board : MonoBehaviour
     private const uint IS_RESIN = 0x0800;
     private const uint IS_BOX = 0x0400;
     //interactables
+    private const uint NOTHING = 0;
     private const uint RED = 0x0001;
     private const uint GREEN = 0x0002;
     private const uint BLUE = 0x0003;
@@ -64,6 +66,12 @@ public sealed class Board : MonoBehaviour
     private void Start()
     {
         GenerateCells();
+        this.enabled = false;
+    }
+
+    public void SetActiveInversed(bool active)
+    {
+        this.enabled = !active;
     }
 
     private void Update()
@@ -124,6 +132,8 @@ public sealed class Board : MonoBehaviour
         hitMask.Clear();
         blastMask.Clear();
         Vector2Int posB;
+        bool blastA;
+        bool blastB;
         switch (direction)
         {
             case MoveDirection.Directionless:
@@ -133,7 +143,9 @@ public sealed class Board : MonoBehaviour
                 posB = position + Vector2Int.right;
                 SwapCells(position,posB);
                 yield return _boardAnimator.SlideAnimation(position,direction);
-                if (!TryBlast(position) && !TryBlast(posB))
+                blastA = TryBlast(position);
+                blastB = TryBlast(posB);
+                if (!blastA && !blastB)
                 {
                     SwapCells(position, posB);
                     yield return _boardAnimator.SlideAnimation(position,direction);
@@ -143,7 +155,9 @@ public sealed class Board : MonoBehaviour
                 posB = position + Vector2Int.left;
                 SwapCells(position,posB);
                 yield return _boardAnimator.SlideAnimation(position,direction);
-                if (!TryBlast(position) && !TryBlast(posB))
+                blastA = TryBlast(position);
+                blastB = TryBlast(posB);
+                if (!blastA && !blastB)
                 {
                     SwapCells(position, posB);
                     yield return _boardAnimator.SlideAnimation(position,direction);
@@ -153,28 +167,65 @@ public sealed class Board : MonoBehaviour
                 posB = position + Vector2Int.up;
                 SwapCells(position,posB);
                 yield return _boardAnimator.SlideAnimation(position,direction);
-                if (!TryBlast(position) && !TryBlast(posB))
+                blastA = TryBlast(position);
+                blastB = TryBlast(posB);
+                if (!blastA && !blastB)
                 {
                     SwapCells(position, posB);
-                    yield return _boardAnimator.SlideAnimation(position,MoveDirection.Down); 
+                    yield return _boardAnimator.SlideAnimation(position,direction); 
                 }
                 break;
             case MoveDirection.Down:
                 posB = position + Vector2Int.down;
                 SwapCells(position,posB);
                 yield return _boardAnimator.SlideAnimation(position,direction);
-                if (!TryBlast(position) && !TryBlast(posB))
+                blastA = TryBlast(position);
+                blastB = TryBlast(posB);
+                if (!blastA && !blastB)
                 {
                     SwapCells(position, posB);
-                    yield return _boardAnimator.SlideAnimation(position,MoveDirection.Up); 
+                    yield return _boardAnimator.SlideAnimation(position,direction); 
                 }
                 break;
         }
 
-        yield return _boardAnimator.BlastAnimation(blastMask);
+        _boardAnimator.BlastAnimation(blastMask);
+        
+        foreach (var pos in blastMask)
+        {
+            _cells[pos.x, pos.y] = NOTHING;
+        }
+        blastMask.Clear();
+        hitMask.Clear();
+        CollapseCells();
+        yield return _boardAnimator.CollapseAnimation(_cells);
         currentCoroutine = null;
     }
 
+    private void CollapseCells()
+    {
+        for (int x = 0; x < Size.x; x++)
+        {
+            int writeY = 0; 
+            for (int readY = 0; readY < Size.y; readY++)
+            {
+                if (GetCellHealth(new Vector2Int(x, readY)) > 0)
+                {
+                    if (readY != writeY)
+                    {
+                        _cells[x, writeY] = _cells[x, readY];
+                        _cells[x, readY] = NOTHING;
+                    }
+
+                    writeY++;
+                }
+            }
+            for (int y = writeY; y < Size.y; y++)
+            {
+                _cells[x, y] = GenerateRandomCell();
+            }
+        }
+    }
     private void BlastCell(Vector2Int position,uint damage = 0x1000)
     {
         if (hitMask.Contains(position)) return;
@@ -220,13 +271,14 @@ public sealed class Board : MonoBehaviour
     }
     private bool TryBlast(Vector2Int pos)
     {
+        uint type = GetCellType(pos);
+        if (type == NOTHING) return false;
         if (IsCellInteractable(pos))
         {
             BlastCell(pos);
             return true;
         }
         bool blasted = false;
-        uint type = GetCellType(pos);
         HashSet<Vector2Int> horizontal = new HashSet<Vector2Int>();
         HashSet<Vector2Int> vertical = new HashSet<Vector2Int>();
         for (int i = pos.x; i < Size.x; i++)
@@ -243,13 +295,13 @@ public sealed class Board : MonoBehaviour
         }
         for (int i = pos.y; i < Size.y; i++)
         {
-            var iPos = new Vector2Int(i, pos.y);
+            var iPos = new Vector2Int(pos.x, i);
             if(type == GetCellType(iPos)) vertical.Add(iPos);
             else break;
         }
         for (int i = pos.y; i > -1; i--)
         {
-            var iPos = new Vector2Int(i, pos.y);
+            var iPos = new Vector2Int(pos.x, i);
             if(type == GetCellType(iPos)) vertical.Add(iPos);
             else break;
         }
@@ -269,7 +321,11 @@ public sealed class Board : MonoBehaviour
         
     } 
     private bool IsCellInteractable(Vector2Int pos) => GetCellType(pos) > 4;
-    private uint GetCellType(Vector2Int pos) => _cells[pos.x, pos.y] &= 0x000F;
+    private uint GetCellType(Vector2Int pos)
+    {
+        if (GetCellHealth(pos) == NOTHING) return NOTHING;
+        return _cells[pos.x, pos.y] & 0x000F;
+    }
     private uint GetCellHealth(Vector2Int pos) => (_cells[pos.x, pos.y] & 0xF000) >> 12;
 
     private uint ReduceCellHealth(Vector2Int pos, uint amount = 1)
