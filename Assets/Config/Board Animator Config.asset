@@ -12,4 +12,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d1a3aee5ef3b4690821c8a315bebb1f6, type: 3}
   m_Name: Board Animator Config
   m_EditorClassIdentifier: Assembly-CSharp::DefaultNamespace.BoardAnimatorConfig
-  <CellSlideDuration>k__BackingField: 0.5
+  <CellSlideDuration>k__BackingField: 0.2
+  <CellBlastDuration>k__BackingField: 0.25
+  <CellFallDuration>k__BackingField: 0.2

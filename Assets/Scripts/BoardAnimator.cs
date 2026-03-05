@@ -45,52 +45,14 @@ public class BoardAnimator : MonoBehaviour
         }
     }
     
-    public IEnumerator SlideAnimation(Vector2Int posA, Board.MoveDirection direction)
+    public IEnumerator SlideAnimation(Vector2Int posA, Vector2Int posB)
     {
-        Vector2Int posB = posA;
         Vector3 worldPosA = GetCellWorldPosition(posA);
-        Vector3 worldPosB;
-        switch (direction)
-        {
-            case Board.MoveDirection.Directionless:
-                yield return null;
-                break;
-            case Board.MoveDirection.Right:
-                posB += Vector2Int.right;
-                worldPosB = GetCellWorldPosition(posB);
-                Tween.PositionX(_elements[posB.x, posB.y], worldPosA.x, _boardAnimatorConfig.CellSlideDuration);
-                Tween.PositionX(_elements[posA.x, posA.y],worldPosB.x,_boardAnimatorConfig.CellSlideDuration);
-                SwitchReferences(posA,posB);
-                yield return new WaitForSeconds(_boardAnimatorConfig.CellSlideDuration);
-                break;
-            case Board.MoveDirection.Left:
-                posB += Vector2Int.left;
-                worldPosB = GetCellWorldPosition(posB);
-                Tween.PositionX(_elements[posB.x, posB.y], worldPosA.x, _boardAnimatorConfig.CellSlideDuration);
-                Tween.PositionX(_elements[posA.x, posA.y],worldPosB.x,_boardAnimatorConfig.CellSlideDuration);
-                SwitchReferences(posA,posB);
-                yield return new WaitForSeconds(_boardAnimatorConfig.CellSlideDuration);
-                break;
-            case Board.MoveDirection.Up:
-                posB += Vector2Int.up;
-                worldPosB = GetCellWorldPosition(posB);
-                Tween.PositionY(_elements[posB.x, posB.y], worldPosA.y, _boardAnimatorConfig.CellSlideDuration);
-                Tween.PositionY(_elements[posA.x, posA.y],worldPosB.y,_boardAnimatorConfig.CellSlideDuration);
-                SwitchReferences(posA,posB);
-                yield return new WaitForSeconds(_boardAnimatorConfig.CellSlideDuration);
-                break;
-            case Board.MoveDirection.Down:
-                posB += Vector2Int.down;
-                worldPosB = GetCellWorldPosition(posB);
-                Debug.Log(worldPosB);
-                Tween.PositionY(_elements[posB.x, posB.y], worldPosA.y, _boardAnimatorConfig.CellSlideDuration);
-                Tween.PositionY(_elements[posA.x, posA.y],worldPosB.y,_boardAnimatorConfig.CellSlideDuration);
-                SwitchReferences(posA,posB);
-                yield return new WaitForSeconds(_boardAnimatorConfig.CellSlideDuration);
-                break;
-        }
-
-        Debug.Log("A: " + posA + " B: " + posB);
+        Vector3 worldPosB = GetCellWorldPosition(posB);
+        Tween.PositionX(_elements[posB.x, posB.y], worldPosA.x, _boardAnimatorConfig.CellSlideDuration);
+        Tween.PositionX(_elements[posA.x, posA.y],worldPosB.x,_boardAnimatorConfig.CellSlideDuration);
+        SwitchReferences(posA,posB);
+        yield return new WaitForSeconds(_boardAnimatorConfig.CellSlideDuration);
     }
 
     private void SwitchReferences(Vector2Int a, Vector2Int b)
