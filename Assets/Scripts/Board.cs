@@ -18,7 +18,7 @@ public sealed class Board : MonoBehaviour
     public Vector2Int MovePositionB { get; private set; }
     public static uint[,] TileHealths;
     public static uint[,] TileIDs;
-    public static bool[,] FallingTiles;
+    public static bool[,] FallingLockMask;
     //maybe add uint[,] _tileBoardRuleIDs to add tile rules all applying over the board.
     
     public static HashSet<Vector2Int> MatchMask;
@@ -27,7 +27,6 @@ public sealed class Board : MonoBehaviour
     //Input Detection
     private Vector2Int selectedPos;
     private bool _isDragging;
-    private Vector3 _offset;
     private Vector3 lastMouseDelta;
     
     public enum MoveDirection
@@ -55,7 +54,7 @@ public sealed class Board : MonoBehaviour
         MatchMask = new HashSet<Vector2Int>(Size.x * Size.y);
         BlastMask = new HashSet<Vector2Int>(Size.x * Size.y);
         TileHealths = new uint[Size.x, Size.y];
-        FallingTiles = new bool[Size.x, Size.y];
+        FallingLockMask = new bool[Size.x, Size.y];
         TileIDs = new uint[Size.x, Size.y];
         RandomGenerateTiles();
     }
@@ -75,10 +74,9 @@ public sealed class Board : MonoBehaviour
             Vector2 mouseWorld = _cam.ScreenToWorldPoint(Input.mousePosition);
             selectedPos = (Vector2Int)_grid.WorldToCell(mouseWorld);
 
-            if (selectedPos.x > -1 && selectedPos.x < Size.x && selectedPos.y > -1 && selectedPos.y < Size.y)
+            if (IsPositionInBounds(selectedPos))
             {
                 _isDragging = true;
-                _offset = transform.position - (Vector3)mouseWorld;
             }
         }
         if (_isDragging && Input.GetMouseButton(0))
@@ -96,7 +94,6 @@ public sealed class Board : MonoBehaviour
             else if (lastPos == selectedPos + Vector2Int.right) DoMove(selectedPos,MoveDirection.Right);
             else if (lastPos == selectedPos + Vector2Int.down) DoMove(selectedPos, MoveDirection.Down);
             else if (lastPos == selectedPos + Vector2Int.left) DoMove(selectedPos, MoveDirection.Left);
-            selectedPos = Vector2Int.zero;
         }
     }
     private void RandomGenerateTiles()
@@ -110,44 +107,44 @@ public sealed class Board : MonoBehaviour
         }
         _boardAnimator.Initialize(TileIDs);
     }
-    public void DoMove(Vector2Int position, MoveDirection direction)
+    private void DoMove(Vector2Int position, MoveDirection direction)
     {
         MovePositionA = position;
         MovePositionB = GetDirectionVector(direction) + position;
         if (ValidateMove() == false) return;
         StartCoroutine(DoMoveRoutine());
     }
-
     private bool ValidateMove()
     {
-        if (MovePositionA.x < 0 || MovePositionA.x >= Size.x || MovePositionB.x < 0 || MovePositionB.x >= Size.x ||
-            MovePositionA.y < 0 || MovePositionA.y >= Size.y || MovePositionB.y < 0 || MovePositionB.y >= Size.y)
+        if (IsPositionInBounds(MovePositionA) == false ||
+            IsPositionInBounds(MovePositionB) == false ||
+            IsMoveableToCell(MovePositionA) == false || 
+            ((MovePositionA != MovePositionB) && (IsMoveableToCell(MovePositionB) == false)))
             return false;
-        uint tileIdA = TileIDs[MovePositionA.x, MovePositionA.y];
-        bool fallingA = FallingTiles[MovePositionA.x, MovePositionA.y];
-        if (tileIdA == 0 || fallingA) return false;
-
-        if (MovePositionA == MovePositionB) return true;
-        
-        uint tileIdB = TileIDs[MovePositionB.x, MovePositionB.y];
-        bool fallingB = FallingTiles[MovePositionB.x, MovePositionB.y];
-        if (tileIdB == 0 || fallingB) return false;
         return true;
     }
-    
+
+    private bool IsMoveableToCell(Vector2Int pos)
+    {
+        uint tileId = TileIDs[pos.x, pos.y];
+        TileConfig config = GameManager.Instance.GameConfig.TileDB.Get(tileId);
+        bool fallLock = FallingLockMask[pos.x, pos.y];
+        bool moveable = config.Moveable;
+        if (tileId == 0 || fallLock || !moveable) return false;
+        return true;
+    }
     private IEnumerator DoMoveRoutine()
     {
-        MatchMask.Clear();
-        BlastMask.Clear();
         if (MovePositionA == MovePositionB) //Tap
         {
             SearchMatchesWholeBoard();
+            if (MatchMask.Count < 1) yield break;
         }
         else //Slide
         {
             SwapCells(MovePositionA,MovePositionB);
-            yield return _boardAnimator.SlideAnimation(MovePositionA,MovePositionB);
             SearchMatchesWholeBoard();
+            yield return _boardAnimator.SlideAnimation(MovePositionA,MovePositionB);
             if (MatchMask.Count < 1) //no blasts
             {
                 SwapCells(MovePositionA, MovePositionB);
@@ -155,7 +152,6 @@ public sealed class Board : MonoBehaviour
                 yield break;
             }
         }
-        if (MatchMask.Count < 1) yield break;
         foreach (var position in MatchMask)
         {
             DamageTile(position);
@@ -168,24 +164,19 @@ public sealed class Board : MonoBehaviour
             var pos = enumerator.Current;
             BlastTile(pos);
         }
-        _boardAnimator.BlastAnimation(BlastMask);
-        foreach (var pos in BlastMask)
-        {
-            TileIDs[pos.x, pos.y] = 0;
-        }
-        BlastMask.Clear();
-        MatchMask.Clear();
         CollapseTiles();
-        yield return _boardAnimator.CollapseAnimation(TileIDs);
+        // yield return _boardAnimator.CollapseAnimation(TileIDs);
+        MatchMask.Clear();
+        BlastMask.Clear();
     }
 
     private void SearchMatchesWholeBoard()
     {
-        for (int y = 0; y < Size.y; y++)
+        for (Vector2Int pos = Vector2Int.zero; pos.y < Size.y; pos.y++)
         {
-            for (int x = 0; x < Size.x; x++)
+            for (;pos.x < Size.x; pos.x++)
             {
-                TryMatch(new Vector2Int(x, y));
+                TryMatch(pos);
             }
         }
     }
@@ -207,32 +198,47 @@ public sealed class Board : MonoBehaviour
     }
     private void CollapseTiles()
     {
-        for (int x = 0; x < Size.x; x++)
+        for (Vector2Int i = Vector2Int.zero; i.x < Size.x; i.x++)
         {
-            int writeY = 0; 
-            for (int readY = 0; readY < Size.y; readY++)
+            i.y = 0;
+            Dictionary<Vector2Int,uint> fallingTilesInColumn = new Dictionary<Vector2Int, uint>(Size.y);
+            int firstEmptyIndex = -1;
+            int zeroCount = 0;
+            for (; i.y < Size.y; i.y++)
             {
-                if (GetTileHealth(new Vector2Int(x, readY)) > 0)
+                if (TileIDs[i.x, i.y] == 0)
                 {
-                    if (readY != writeY)
-                    {
-                        TileIDs[x, writeY] = TileIDs[x, readY];
-                        TileIDs[x, readY] = 0;
-                    }
-
-                    writeY++;
+                    if (firstEmptyIndex == -1) firstEmptyIndex = i.y;
+                    zeroCount++;
                 }
+                else
+                {
+                    if(firstEmptyIndex != -1) //will fall
+                    {
+                        fallingTilesInColumn.Add(i,TileIDs[i.x, i.y]);
+                        TileIDs[i.x, i.y] = 0;
+                    }
+                }
+                if(firstEmptyIndex != -1) FallingLockMask[i.x, i.y] = true;
             }
-            for (int y = writeY; y < Size.y; y++)
+
+            for (int y = firstEmptyIndex; y < Size.y; y++)
             {
-                PutRandomTile(new Vector2Int(x,y));
+                if (fallingTilesInColumn.Count > 0)
+                {
+                    var enumerator = fallingTilesInColumn.GetEnumerator();
+                    enumerator.MoveNext();
+                    TileIDs[i.x, y] = enumerator.Current.Value;
+                    _boardAnimator.CollapseAnimation(enumerator.Current.Key,new Vector2Int(i.x,y));
+                }// you are here
+                else PutRandomTile(new Vector2Int(i.x,y));
             }
         }
     }
     private void BlastTile(Vector2Int position,uint damage = 0x1000)
     {
         if (!BlastMask.Contains(position))
-            throw new Exception("cell needs to be marked from blastmask to be blastable.");
+            throw new Exception("cell needs to be marked from BlastMask to be blastable.");
         uint id =  TileIDs[position.x, position.y];
         TileConfig config = GameManager.Instance.GameConfig.TileDB.Get(id);
         foreach (var pattern in config.BlastPatterns)
@@ -240,11 +246,15 @@ public sealed class Board : MonoBehaviour
             pattern.Blast(position,this);
         }
         _boardAnimator.BlastAnimation(position);
+        TileIDs[position.x, position.y] = 0;
+        FallingLockMask[position.x, position.y] = false;
+        TileHealths[position.x, position.y] = 0;
         BlastMask.Remove(position);
     }
 
     private void SwapCells(Vector2Int a, Vector2Int b)
     {
+        if (IsPositionInBounds(a) == false || IsPositionInBounds(b) == false) throw new IndexOutOfRangeException();
         // ReSharper disable once SwapViaDeconstruction
         uint tempID = TileIDs[a.x, a.y];
         TileIDs[a.x, a.y] = TileIDs[b.x, b.y];
@@ -258,7 +268,7 @@ public sealed class Board : MonoBehaviour
     {
         if (MatchMask.Contains(pos)) return true;
         TileConfig config = GetTileType(pos);
-        if (config == null) return false;
+        if (config == null) throw new Exception("Invalid TileID for Config Query.");
         bool match = false;
         foreach (var rule in config.MatchRules)
         {
@@ -266,20 +276,18 @@ public sealed class Board : MonoBehaviour
         }
         return match;
     }
-    public TileConfig GetTileType(Vector2Int pos) => GameManager.Instance.GameConfig.TileDB.Get(TileIDs[pos.x, pos.y]);
-    private uint GetTileHealth(Vector2Int pos) => TileHealths[pos.x, pos.y];
-    private uint DamageTile(Vector2Int pos, uint amount = 1)
+    
+    private TileConfig GetTileType(Vector2Int pos) => GameManager.Instance.GameConfig.TileDB.Get(TileIDs[pos.x, pos.y]);
+    private void DamageTile(Vector2Int pos, uint amount = 1)
     {
         int x = pos.x;
         int y = pos.y;
         amount = (uint)Mathf.Clamp(amount, 0, TileHealths[x, y]);
         uint health = TileHealths[x, y] -= amount;
-        Debug.Log("hp:" + TileHealths[x,y]);
         if (health == 0)
         {
             BlastMask.Add(pos);
         }
-        return health;
     }
     private void PutRandomTile(Vector2Int pos)
     {
@@ -288,9 +296,16 @@ public sealed class Board : MonoBehaviour
     }
     private void PutTile(Vector2Int pos, uint tileID)
     {
+        if (IsPositionInBounds(pos) == false) return;
         TileConfig config = GameManager.Instance.GameConfig.TileDB.Get(tileID);
         TileIDs[pos.x, pos.y] = tileID;
         TileHealths[pos.x, pos.y] = config.StartHealth;
-        FallingTiles[pos.x, pos.y] = false;
+        FallingLockMask[pos.x, pos.y] = false;
+    }
+
+    public bool IsPositionInBounds(Vector2Int pos)
+    {
+        if (pos.x < 0 || pos.x >= Size.x || pos.y < 0 || pos.y >= Size.y) return false;
+        return true;
     }
 }

@@ -11,6 +11,7 @@ public class TileConfig : SerializedScriptableObject
     [field: SerializeField,VerticalGroup("SpriteRow/RightColumn")] public uint StartHealth { get; private set; } = 1;
     [field: SerializeField,VerticalGroup("SpriteRow/RightColumn")] public bool Fallable { get; private set; } = false;
     [field: SerializeField,VerticalGroup("SpriteRow/RightColumn")] public bool Interactable { get; private set; } = false;
+    [field: SerializeField,] public bool Moveable { get; private set; } = true;
     [field: SerializeField] public GameObject BlastVFXPrefab { get; private set; } = null;
     
     [Title("Blast Patterns")]

@@ -9,11 +9,12 @@ using UnityEngine;
 public class BoardAnimator : MonoBehaviour
 {
     private Transform[,] _elements;
+    [SerializeField] private Board _board;
     [SerializeField] private Grid _grid;
     [SerializeField] private BoardAnimatorConfig _boardAnimatorConfig;
     [SerializeField] private ObjectPooler _tileObjectPooler;
     [SerializeField] private ObjectPooler _vfxObjectPooler;
-
+    private Dictionary<Vector2Int, Tween> tileToFallingTween;
 
     public void Initialize(uint[,] cells)
     {
@@ -23,21 +24,26 @@ public class BoardAnimator : MonoBehaviour
         {
             for (int x = 0; x < cells.GetLength(0); x++)
             {
-                SpriteRenderer newCell = _tileObjectPooler.Get().GetComponent<SpriteRenderer>();
-                _elements[x, y] = newCell.transform;
-                newCell.transform.SetParent(transform);
-                newCell.transform.position = GetCellWorldPosition(new Vector2Int(x,y));
-                newCell.sprite = GameManager.Instance.GameConfig.TileDB.Get(cells[x,y]).Sprite;
+                Transform newObject = GetNewTile(cells[x, y]);
+                newObject.position = GetCellWorldPosition(new Vector2Int(x,y));
+                _elements[x, y] = newObject;
             }
         }
     }
 
+    private Transform GetNewTile(uint id)
+    {
+        GameObject gamObject = _tileObjectPooler.Get();
+        gamObject.transform.SetParent(transform);
+        gamObject.GetComponent<SpriteRenderer>().sprite = GameManager.Instance.GameConfig.TileDB.Get(id).Sprite;
+        return gamObject.transform;
+    }
     public void Clear()
     {
         if (_elements == null) return;
         foreach (var VARIABLE in _elements)
         {
-            _tileObjectPooler.Release(VARIABLE.gameObject);
+            if(VARIABLE != null) _tileObjectPooler.Release(VARIABLE.gameObject);
         }
     }
 
@@ -103,6 +109,9 @@ public class BoardAnimator : MonoBehaviour
                         Vector3 targetPos = GetCellWorldPosition(new Vector2Int(x, writeY));
                         Tween.Position(falling, targetPos, duration);
                     }
+                    
+                    var sr = _elements[x, writeY].GetComponent<SpriteRenderer>();
+                    sr.sprite = GameManager.Instance.GameConfig.TileDB.Get(cells[x, writeY]).Sprite;
 
                     writeY++;
                 }
@@ -126,5 +135,30 @@ public class BoardAnimator : MonoBehaviour
         }
 
         yield return new WaitForSeconds(duration);
+    }
+
+    public void CollapseAnimation(Vector2Int start, Vector2Int end)
+    {
+        StartCoroutine(TileCollapseRoutine(start, end));
+    }
+    public void CollapseNewTileAnimation(uint id,Vector2Int start, Vector2Int end)
+    {
+        StartCoroutine(NewTileCollapseRoutine(id,start, end));
+    }
+
+    private IEnumerator TileCollapseRoutine(Vector2Int start,Vector2Int end)
+    {
+        Transform element = _elements[start.x, start.y];
+        _elements[start.x, start.y] = null;
+        _elements[end.x, end.y] = element;
+        yield return Tween.Position(element, GetCellWorldPosition(end), _boardAnimatorConfig.CellFallDuration).ToYieldInstruction();
+        Board.FallingLockMask[end.x, end.y] = false;
+    }
+    private IEnumerator NewTileCollapseRoutine(uint id,Vector2Int startTilePosition,Vector2Int end)
+    {
+        Transform element = GetNewTile(id);
+        element.position = GetCellWorldPosition(startTilePosition);
+        yield return Tween.Position(element, GetCellWorldPosition(end), _boardAnimatorConfig.CellFallDuration).ToYieldInstruction();
+        Board.FallingLockMask[end.x, end.y] = false;
     }
 }
