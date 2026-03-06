@@ -20,8 +20,6 @@ MonoBehaviour:
     - {fileID: 11400000, guid: 00058e81c164cb648872883964cc566b, type: 2}
     - {fileID: 11400000, guid: c82269390c7461e4ea5baf56d32d0a81, type: 2}
     - {fileID: 11400000, guid: 91a1aba9f346164438686fee8e557dea, type: 2}
-    - {fileID: 11400000, guid: 6c9843cb42f7b104985def0ce91bc379, type: 2}
-    - {fileID: 11400000, guid: 65efa04e92ddb6f4991c0609c4419b62, type: 2}
     SerializedBytesString: 
     Prefab: {fileID: 0}
     PrefabModificationsReferencedUnityObjects: []
@@ -29,18 +27,18 @@ MonoBehaviour:
     SerializationNodes:
     - Name: Tiles
       Entry: 7
-      Data: 0|System.Collections.Generic.Dictionary`2[[System.Int32, mscorlib],[TileConfig,
+      Data: 0|System.Collections.Generic.Dictionary`2[[System.UInt32, mscorlib],[TileConfig,
         Assembly-CSharp]], mscorlib
     - Name: comparer
       Entry: 7
-      Data: 1|System.Collections.Generic.GenericEqualityComparer`1[[System.Int32,
+      Data: 1|System.Collections.Generic.GenericEqualityComparer`1[[System.UInt32,
         mscorlib]], mscorlib
     - Name: 
       Entry: 8
       Data: 
     - Name: 
       Entry: 12
-      Data: 6
+      Data: 4
     - Name: 
       Entry: 7
       Data: 
@@ -86,30 +84,6 @@ MonoBehaviour:
     - Name: $v
       Entry: 10
       Data: 3
-    - Name: 
-      Entry: 8
-      Data: 
-    - Name: 
-      Entry: 7
-      Data: 
-    - Name: $k
-      Entry: 3
-      Data: 5
-    - Name: $v
-      Entry: 10
-      Data: 4
-    - Name: 
-      Entry: 8
-      Data: 
-    - Name: 
-      Entry: 7
-      Data: 
-    - Name: $k
-      Entry: 3
-      Data: 6
-    - Name: $v
-      Entry: 10
-      Data: 5
     - Name: 
       Entry: 8
       Data: 

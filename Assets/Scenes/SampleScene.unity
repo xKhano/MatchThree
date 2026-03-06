@@ -816,12 +816,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c05b8bf09f0c2dc4bace6be3216a31fc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: '::'
-  _config: {fileID: 11400000, guid: 5cffa9e29820e674aadf1e527b07f79d, type: 2}
   debugging: 1
   _boardAnimator: {fileID: 263380164}
-  <Size>k__BackingField: {x: 9, y: 9}
   _seed: 123
   _grid: {fileID: 263380160}
+  <Size>k__BackingField: {x: 9, y: 9}
 --- !u!483693784 &263380162
 TilemapRenderer:
   serializedVersion: 2
@@ -2077,7 +2076,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c2de6582b20593a4297fe0b0f8a6ba2a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: '::'
-  <GameConfig>k__BackingField: {fileID: 0}
+  <GameConfig>k__BackingField: {fileID: 11400000, guid: dfbc88d87064ee64fb82a20e1ac122d7, type: 2}
 --- !u!4 &286593096
 Transform:
   m_ObjectHideFlags: 0

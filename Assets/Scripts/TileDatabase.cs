@@ -30,5 +30,5 @@ public class TileDatabase : SerializedScriptableObject
         return config;
     }
 
-    public uint GetRandomID() => (uint)Random.Range(1, Tiles.Count);
+    public uint GetRandomID() => (uint)Random.Range(1, Tiles.Count+1);
 }

@@ -11,13 +11,13 @@ public class BoardAnimator : MonoBehaviour
     private Transform[,] _elements;
     [SerializeField] private Grid _grid;
     [SerializeField] private BoardAnimatorConfig _boardAnimatorConfig;
-    [SerializeField] private BoardConfig _boardConfig;
     [SerializeField] private ObjectPooler _tileObjectPooler;
     [SerializeField] private ObjectPooler _vfxObjectPooler;
 
 
     public void Initialize(uint[,] cells)
     {
+        Clear();
         _elements = new Transform[cells.GetLength(0), cells.GetLength(1)];
         for (int y = 0; y < cells.GetLength(1); y++)
         {
@@ -27,8 +27,17 @@ public class BoardAnimator : MonoBehaviour
                 _elements[x, y] = newCell.transform;
                 newCell.transform.SetParent(transform);
                 newCell.transform.position = GetCellWorldPosition(new Vector2Int(x,y));
-                newCell.sprite = _boardConfig.GetSprite(cells[x,y]);
+                newCell.sprite = GameManager.Instance.GameConfig.TileDB.Get(cells[x,y]).Sprite;
             }
+        }
+    }
+
+    public void Clear()
+    {
+        if (_elements == null) return;
+        foreach (var VARIABLE in _elements)
+        {
+            _tileObjectPooler.Release(VARIABLE.gameObject);
         }
     }
 
@@ -36,21 +45,26 @@ public class BoardAnimator : MonoBehaviour
     {
         foreach (var VARIABLE in blastIndexes)
         {
-            var worldPos = GetCellWorldPosition(VARIABLE);
-            GameObject vfx = _vfxObjectPooler.Get();
-            vfx.transform.position = worldPos;
-            vfx.GetComponent<ObjectPoolVFX>().Pool = _vfxObjectPooler;
-            _tileObjectPooler.Release(_elements[VARIABLE.x, VARIABLE.y].gameObject);
-            _elements[VARIABLE.x, VARIABLE.y] = null;
+            BlastAnimation(VARIABLE);
         }
+    }
+
+    public void BlastAnimation(Vector2Int pos)
+    {
+        var worldPos = GetCellWorldPosition(pos);
+        GameObject vfx = _vfxObjectPooler.Get();
+        vfx.transform.position = worldPos;
+        vfx.GetComponent<ObjectPoolVFX>().Pool = _vfxObjectPooler;
+        _tileObjectPooler.Release(_elements[pos.x, pos.y].gameObject);
+        _elements[pos.x, pos.y] = null;
     }
     
     public IEnumerator SlideAnimation(Vector2Int posA, Vector2Int posB)
     {
         Vector3 worldPosA = GetCellWorldPosition(posA);
         Vector3 worldPosB = GetCellWorldPosition(posB);
-        Tween.PositionX(_elements[posB.x, posB.y], worldPosA.x, _boardAnimatorConfig.CellSlideDuration);
-        Tween.PositionX(_elements[posA.x, posA.y],worldPosB.x,_boardAnimatorConfig.CellSlideDuration);
+        Tween.Position(_elements[posB.x, posB.y], worldPosA, _boardAnimatorConfig.CellSlideDuration);
+        Tween.Position(_elements[posA.x, posA.y],worldPosB,_boardAnimatorConfig.CellSlideDuration);
         SwitchReferences(posA,posB);
         yield return new WaitForSeconds(_boardAnimatorConfig.CellSlideDuration);
     }
@@ -101,7 +115,7 @@ public class BoardAnimator : MonoBehaviour
 
                 _elements[x, y] = newTile.transform;
 
-                newTile.sprite = _boardConfig.GetSprite(cells[x, y]);
+                newTile.sprite = GameManager.Instance.GameConfig.TileDB.Get(cells[x,y]).Sprite;
                 
                 Vector3 spawnPos = GetCellWorldPosition(new Vector2Int(x, height + (y - writeY)));
                 newTile.transform.position = spawnPos;

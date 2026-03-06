@@ -21,8 +21,8 @@ public sealed class Board : MonoBehaviour
     public static bool[,] FallingTiles;
     //maybe add uint[,] _tileBoardRuleIDs to add tile rules all applying over the board.
     
-    private static HashSet<Vector2Int> hitMask;
-    private static HashSet<Vector2Int> blastMask;
+    public static HashSet<Vector2Int> MatchMask;
+    public static HashSet<Vector2Int> BlastMask;
 
     //Input Detection
     private Vector2Int selectedPos;
@@ -40,17 +40,24 @@ public sealed class Board : MonoBehaviour
     }
     public void Awake()
     {
-        hitMask = new HashSet<Vector2Int>(Size.x * Size.y);
-        blastMask = new HashSet<Vector2Int>(Size.x * Size.y);
-        TileIDs = new uint[Size.x, Size.y];
         Singleton = this;
         _cam = Camera.main;
         UnityEngine.Random.InitState(_seed);
     }
     private void Start()
     {
-        RandomGenerateTiles();
+        SetupLevel();
         this.enabled = false;
+    }
+
+    private void SetupLevel()
+    {
+        MatchMask = new HashSet<Vector2Int>(Size.x * Size.y);
+        BlastMask = new HashSet<Vector2Int>(Size.x * Size.y);
+        TileHealths = new uint[Size.x, Size.y];
+        FallingTiles = new bool[Size.x, Size.y];
+        TileIDs = new uint[Size.x, Size.y];
+        RandomGenerateTiles();
     }
     public void SetActiveInversed(bool active)
     {
@@ -59,6 +66,7 @@ public sealed class Board : MonoBehaviour
     private void Update()
     {
         CheckInput();
+        if(Input.GetKeyDown(KeyCode.A)) _boardAnimator.Initialize(TileIDs);
     }
     private void CheckInput()
     {
@@ -113,54 +121,73 @@ public sealed class Board : MonoBehaviour
     private bool ValidateMove()
     {
         if (MovePositionA.x < 0 || MovePositionA.x >= Size.x || MovePositionB.x < 0 || MovePositionB.x >= Size.x ||
-            MovePositionA.y < 0 || MovePositionA.y >= Size.y || MovePositionB.y < 0 || MovePositionB.y > Size.y)
+            MovePositionA.y < 0 || MovePositionA.y >= Size.y || MovePositionB.y < 0 || MovePositionB.y >= Size.y)
             return false;
         uint tileIdA = TileIDs[MovePositionA.x, MovePositionA.y];
         bool fallingA = FallingTiles[MovePositionA.x, MovePositionA.y];
         if (tileIdA == 0 || fallingA) return false;
-        TileConfig configA = GameManager.Instance.GameConfig.TileDB.Get(tileIdA);
-        if (configA.Interactable) return true;
+
+        if (MovePositionA == MovePositionB) return true;
         
         uint tileIdB = TileIDs[MovePositionB.x, MovePositionB.y];
         bool fallingB = FallingTiles[MovePositionB.x, MovePositionB.y];
         if (tileIdB == 0 || fallingB) return false;
         return true;
     }
+    
     private IEnumerator DoMoveRoutine()
     {
-        hitMask.Clear();
-        blastMask.Clear();
-        bool blastA;
-        if (MovePositionA == MovePositionB) //Single
+        MatchMask.Clear();
+        BlastMask.Clear();
+        if (MovePositionA == MovePositionB) //Tap
         {
-            blastA = HasMatch(MovePositionA);
-            if(IsCellInteractable(MovePositionA)) BlastCell(MovePositionA);
-            _boardAnimator.BlastAnimation(blastMask);
+            SearchMatchesWholeBoard();
         }
-        else //Multiple
+        else //Slide
         {
-            bool blastB;
             SwapCells(MovePositionA,MovePositionB);
             yield return _boardAnimator.SlideAnimation(MovePositionA,MovePositionB);
-            blastA = HasMatch(MovePositionA);
-            blastB = HasMatch(MovePositionB);
-            if (!blastA && !blastB) //no blasts
+            SearchMatchesWholeBoard();
+            if (MatchMask.Count < 1) //no blasts
             {
                 SwapCells(MovePositionA, MovePositionB);
                 yield return _boardAnimator.SlideAnimation(MovePositionA,MovePositionB);
                 yield break;
             }
-            _boardAnimator.BlastAnimation(blastMask);
         }
-        
-        foreach (var pos in blastMask)
+        if (MatchMask.Count < 1) yield break;
+        foreach (var position in MatchMask)
+        {
+            DamageTile(position);
+        }
+        if (BlastMask.Count < 1) yield break;
+        while (BlastMask.Count > 0)
+        {
+            var enumerator = BlastMask.GetEnumerator();
+            enumerator.MoveNext();
+            var pos = enumerator.Current;
+            BlastTile(pos);
+        }
+        _boardAnimator.BlastAnimation(BlastMask);
+        foreach (var pos in BlastMask)
         {
             TileIDs[pos.x, pos.y] = 0;
         }
-        blastMask.Clear();
-        hitMask.Clear();
+        BlastMask.Clear();
+        MatchMask.Clear();
         CollapseTiles();
         yield return _boardAnimator.CollapseAnimation(TileIDs);
+    }
+
+    private void SearchMatchesWholeBoard()
+    {
+        for (int y = 0; y < Size.y; y++)
+        {
+            for (int x = 0; x < Size.x; x++)
+            {
+                TryMatch(new Vector2Int(x, y));
+            }
+        }
     }
     private static Vector2Int GetDirectionVector(MoveDirection direction)
     {
@@ -185,7 +212,7 @@ public sealed class Board : MonoBehaviour
             int writeY = 0; 
             for (int readY = 0; readY < Size.y; readY++)
             {
-                if (GetCellHealth(new Vector2Int(x, readY)) > 0)
+                if (GetTileHealth(new Vector2Int(x, readY)) > 0)
                 {
                     if (readY != writeY)
                     {
@@ -202,25 +229,18 @@ public sealed class Board : MonoBehaviour
             }
         }
     }
-    private void BlastCell(Vector2Int position,uint damage = 0x1000)
+    private void BlastTile(Vector2Int position,uint damage = 0x1000)
     {
-        if (hitMask.Contains(position)) return;
-        if (DamageTile(position, damage) == 0) blastMask.Add(position);
-        hitMask.Add(position);
-        // else if ((_cells[position.x, position.y] & ROCKET_V) == ROCKET_V)
-        // {
-        //     for (Vector2Int i = new Vector2Int(position.x,0); i.y < Size.y; i.y++)
-        //     {
-        //         BlastCell(i,damage);
-        //     }
-        // }
-        // else if ((_cells[position.x, position.y] & ROCKET_H) == ROCKET_H)
-        // {
-        //     for (Vector2Int i = new Vector2Int(0,position.y); i.x < Size.x; i.x++)
-        //     {
-        //         BlastCell(i,damage);
-        //     }
-        // }
+        if (!BlastMask.Contains(position))
+            throw new Exception("cell needs to be marked from blastmask to be blastable.");
+        uint id =  TileIDs[position.x, position.y];
+        TileConfig config = GameManager.Instance.GameConfig.TileDB.Get(id);
+        foreach (var pattern in config.BlastPatterns)
+        {
+            pattern.Blast(position,this);
+        }
+        _boardAnimator.BlastAnimation(position);
+        BlastMask.Remove(position);
     }
 
     private void SwapCells(Vector2Int a, Vector2Int b)
@@ -229,81 +249,35 @@ public sealed class Board : MonoBehaviour
         uint tempID = TileIDs[a.x, a.y];
         TileIDs[a.x, a.y] = TileIDs[b.x, b.y];
         TileIDs[b.x, b.y] = tempID;
-        
         // ReSharper disable once SwapViaDeconstruction
         uint tempHealth = TileHealths[a.x, a.y];
         TileHealths[a.x, a.y] = TileHealths[b.x, b.y];
         TileHealths[b.x, b.y] = tempHealth;
     }
-    private bool HasMatch(Vector2Int pos)
+    private bool TryMatch(Vector2Int pos)
     {
-        TileConfig config = GetCellType(pos);
+        if (MatchMask.Contains(pos)) return true;
+        TileConfig config = GetTileType(pos);
         if (config == null) return false;
-        
-
-        // foreach (var VARIABLE in config.matches)
-        // {
-        //     
-        // }
-        if (IsCellInteractable(pos))
+        bool match = false;
+        foreach (var rule in config.MatchRules)
         {
-            BlastCell(pos);
-            return true;
+            if (rule.HasMatch(pos, this)) match = true;
         }
-        bool blasted = false;
-        HashSet<Vector2Int> horizontal = new HashSet<Vector2Int>();
-        HashSet<Vector2Int> vertical = new HashSet<Vector2Int>();
-        for (int i = pos.x; i < Size.x; i++)
-        {
-            var iPos = new Vector2Int(i, pos.y);
-            if (config == GetCellType(iPos)) horizontal.Add(iPos);
-            else break;
-        }
-        for (int i = pos.x; i > -1; i--)
-        {
-            var iPos = new Vector2Int(i, pos.y);
-            if (config == GetCellType(iPos)) horizontal.Add(iPos);
-            else break;
-        }
-        for (int i = pos.y; i < Size.y; i++)
-        {
-            var iPos = new Vector2Int(pos.x, i);
-            if(config == GetCellType(iPos)) vertical.Add(iPos);
-            else break;
-        }
-        for (int i = pos.y; i > -1; i--)
-        {
-            var iPos = new Vector2Int(pos.x, i);
-            if(config == GetCellType(iPos)) vertical.Add(iPos);
-            else break;
-        }
-
-        if (horizontal.Contains(pos) && horizontal.Count >= 3)
-        {
-            foreach(var i in horizontal) BlastCell(i);
-            blasted = true;
-        }
-        if (vertical.Contains(pos) && vertical.Count >= 3)
-        {
-            foreach(var i in vertical) BlastCell(i);
-            blasted = true;
-        }
-        return blasted;
+        return match;
     }
-    private bool IsCellInteractable(Vector2Int pos) => GetCellType(pos).Interactable;
-    private TileConfig GetCellType(Vector2Int pos) => GameManager.Instance.GameConfig.TileDB.Get(TileIDs[pos.x, pos.y]);
-    private uint GetCellHealth(Vector2Int pos) => TileHealths[pos.x, pos.y];
+    public TileConfig GetTileType(Vector2Int pos) => GameManager.Instance.GameConfig.TileDB.Get(TileIDs[pos.x, pos.y]);
+    private uint GetTileHealth(Vector2Int pos) => TileHealths[pos.x, pos.y];
     private uint DamageTile(Vector2Int pos, uint amount = 1)
     {
         int x = pos.x;
         int y = pos.y;
+        amount = (uint)Mathf.Clamp(amount, 0, TileHealths[x, y]);
         uint health = TileHealths[x, y] -= amount;
-        hitMask.Add(pos);
+        Debug.Log("hp:" + TileHealths[x,y]);
         if (health == 0)
         {
-            TileIDs[x, y] = 0;
-            FallingTiles[x, y] = false;
-            blastMask.Add(pos);
+            BlastMask.Add(pos);
         }
         return health;
     }
