@@ -9,7 +9,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 0}
+  m_Script: {fileID: 11500000, guid: c7a8d6247eb74986af9018e17d9b9a35, type: 3}
   m_Name: Blue
   m_EditorClassIdentifier: Assembly-CSharp::TileConfig
   serializationData:
@@ -20,14 +20,17 @@ MonoBehaviour:
     Prefab: {fileID: 0}
     PrefabModificationsReferencedUnityObjects: []
     PrefabModifications: []
-    SerializationNodes:
-    - Name: <BlastPatterns>k__BackingField
-      Entry: 6
-      Data: 
+    SerializationNodes: []
   <Sprite>k__BackingField: {fileID: 21300000, guid: 2f59579a0448e594093edead0c66727d, type: 3}
   <Name>k__BackingField: Blue
   <AnimatorController>k__BackingField: {fileID: 0}
   <StartHealth>k__BackingField: 1
   <Fallable>k__BackingField: 1
   <Interactable>k__BackingField: 0
+  <ReplacementColor>k__BackingField: {r: 0, g: 0.4436121, b: 1, a: 1}
+  <Moveable>k__BackingField: 1
   <BlastVFXPrefab>k__BackingField: {fileID: 0}
+  _blastPatterns:
+  - {fileID: 11400000, guid: 6725c64feae71ed468249313840eb4ac, type: 2}
+  _matchRules:
+  - {fileID: 11400000, guid: da1b72b8603e02840a10253a21d69005, type: 2}

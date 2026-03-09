@@ -58,7 +58,11 @@ public class BoardAnimator : MonoBehaviour
     public void BlastAnimation(Vector2Int pos)
     {
         var worldPos = GetCellWorldPosition(pos);
+        uint id = Board.TileIDs[pos.x,pos.y];
+        TileConfig config = GameManager.Instance.GameConfig.TileDB.Get(id);
         GameObject vfx = _vfxObjectPooler.Get();
+        ObjectPoolVFX vfxScript = vfx.GetComponent<ObjectPoolVFX>();
+        vfxScript.ChangeColor(config.ReplacementColor);
         vfx.transform.position = worldPos;
         vfx.GetComponent<ObjectPoolVFX>().Pool = _vfxObjectPooler;
         _tileObjectPooler.Release(_elements[pos.x, pos.y].gameObject);
@@ -151,12 +155,14 @@ public class BoardAnimator : MonoBehaviour
         Transform element = _elements[start.x, start.y];
         _elements[start.x, start.y] = null;
         _elements[end.x, end.y] = element;
+        element.position = GetCellWorldPosition(start);
         yield return Tween.Position(element, GetCellWorldPosition(end), _boardAnimatorConfig.CellFallDuration).ToYieldInstruction();
         Board.FallingLockMask[end.x, end.y] = false;
     }
     private IEnumerator NewTileCollapseRoutine(uint id,Vector2Int startTilePosition,Vector2Int end)
     {
         Transform element = GetNewTile(id);
+        _elements[end.x, end.y] = element;
         element.position = GetCellWorldPosition(startTilePosition);
         yield return Tween.Position(element, GetCellWorldPosition(end), _boardAnimatorConfig.CellFallDuration).ToYieldInstruction();
         Board.FallingLockMask[end.x, end.y] = false;

@@ -7,7 +7,8 @@ using UnityEngine.Tilemaps;
 [CreateAssetMenu(fileName = "TileDatabase", menuName = "Scriptable Objects/Tile Database")]
 public class TileDatabase : SerializedScriptableObject
 {
-    [SerializeField] private Dictionary<uint,TileConfig> Tiles;
+    [OdinSerialize,AssetsOnly]
+    private Dictionary<uint,TileConfig> Tiles = new();
 
     public TileConfig Get(uint id)
     {
@@ -26,7 +27,7 @@ public class TileDatabase : SerializedScriptableObject
 
     public TileConfig GetRandom()
     {
-        Tiles.TryGetValue((uint)Random.Range(1, Tiles.Count), out TileConfig config);
+        Tiles.TryGetValue((uint)Random.Range(1, Tiles.Count + 1), out TileConfig config);
         return config;
     }
 

@@ -35,7 +35,7 @@ public class OverlayAnimator : MonoBehaviour
             _image.CrossFadeAlpha(1f, 0f, true);
             yield return new WaitForSeconds(fadeOutDelay);
             _image.CrossFadeAlpha(0f, fadeOutDuration, true);
-            yield return new WaitForSeconds(fadeInDuration);
+            yield return new WaitForSeconds(fadeOutDuration);
             _image.enabled = false;
         }
     }

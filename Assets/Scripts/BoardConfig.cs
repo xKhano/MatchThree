@@ -1,5 +1,4 @@
 using UnityEngine;
-using UnityEngine.TextCore.LowLevel;
 
 [CreateAssetMenu(fileName = "BoardConfig", menuName = "Scriptable Objects/BoardConfig")]
 public class BoardConfig : ScriptableObject

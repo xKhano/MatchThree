@@ -7,7 +7,8 @@ using UnityEngine;
 public sealed class Board : MonoBehaviour
 {
     public static Board Singleton { get; private set; }
-    
+    public uint Moves { get; private set; }
+    [field:SerializeField] public LevelConfig CurrentLevel { get; private set; }
     [SerializeField] private bool debugging = true;
     [SerializeField] private BoardAnimator _boardAnimator; 
     [SerializeField] private int _seed;
@@ -28,6 +29,8 @@ public sealed class Board : MonoBehaviour
     private Vector2Int selectedPos;
     private bool _isDragging;
     private Vector3 lastMouseDelta;
+
+    public event Action OnLevelSetup;
     
     public enum MoveDirection
     {
@@ -57,6 +60,7 @@ public sealed class Board : MonoBehaviour
         FallingLockMask = new bool[Size.x, Size.y];
         TileIDs = new uint[Size.x, Size.y];
         RandomGenerateTiles();
+        OnLevelSetup?.Invoke();
     }
     public void SetActiveInversed(bool active)
     {
@@ -152,20 +156,26 @@ public sealed class Board : MonoBehaviour
                 yield break;
             }
         }
-        foreach (var position in MatchMask)
+        do
         {
-            DamageTile(position);
-        }
-        if (BlastMask.Count < 1) yield break;
-        while (BlastMask.Count > 0)
-        {
-            var enumerator = BlastMask.GetEnumerator();
-            enumerator.MoveNext();
-            var pos = enumerator.Current;
-            BlastTile(pos);
-        }
-        CollapseTiles();
-        // yield return _boardAnimator.CollapseAnimation(TileIDs);
+            foreach (var position in MatchMask)
+            {
+                DamageTile(position);
+            }
+            MatchMask.Clear();
+            if (BlastMask.Count < 1) break;
+            while (BlastMask.Count > 0)
+            {
+                var enumerator = BlastMask.GetEnumerator();
+                enumerator.MoveNext();
+                var pos = enumerator.Current;
+                BlastTile(pos);
+            }
+            BlastMask.Clear();
+            CollapseTiles();
+            while (HasFallingTiles()) yield return null;
+            SearchMatchesWholeBoard();
+        } while (MatchMask.Count > 0);
         MatchMask.Clear();
         BlastMask.Clear();
     }
@@ -174,7 +184,7 @@ public sealed class Board : MonoBehaviour
     {
         for (Vector2Int pos = Vector2Int.zero; pos.y < Size.y; pos.y++)
         {
-            for (;pos.x < Size.x; pos.x++)
+            for (pos.x = 0; pos.x < Size.x; pos.x++)
             {
                 TryMatch(pos);
             }
@@ -201,7 +211,8 @@ public sealed class Board : MonoBehaviour
         for (Vector2Int i = Vector2Int.zero; i.x < Size.x; i.x++)
         {
             i.y = 0;
-            Dictionary<Vector2Int,uint> fallingTilesInColumn = new Dictionary<Vector2Int, uint>(Size.y);
+            Queue<Vector2Int> fallingTilesStartPos = new Queue<Vector2Int>(Size.y);
+            Queue<uint> fallingTilesID = new Queue<uint>(Size.y);
             int firstEmptyIndex = -1;
             int zeroCount = 0;
             for (; i.y < Size.y; i.y++)
@@ -215,23 +226,32 @@ public sealed class Board : MonoBehaviour
                 {
                     if(firstEmptyIndex != -1) //will fall
                     {
-                        fallingTilesInColumn.Add(i,TileIDs[i.x, i.y]);
+                        fallingTilesStartPos.Enqueue(i);
+                        fallingTilesID.Enqueue(TileIDs[i.x,i.y]);
                         TileIDs[i.x, i.y] = 0;
                     }
                 }
                 if(firstEmptyIndex != -1) FallingLockMask[i.x, i.y] = true;
             }
 
-            for (int y = firstEmptyIndex; y < Size.y; y++)
+            if (firstEmptyIndex == -1) continue;
+            i.y = firstEmptyIndex;
+            int generations = 0;
+            for (; i.y < Size.y; i.y++)
             {
-                if (fallingTilesInColumn.Count > 0)
+                if (fallingTilesStartPos.Count > 0)
                 {
-                    var enumerator = fallingTilesInColumn.GetEnumerator();
-                    enumerator.MoveNext();
-                    TileIDs[i.x, y] = enumerator.Current.Value;
-                    _boardAnimator.CollapseAnimation(enumerator.Current.Key,new Vector2Int(i.x,y));
+                    Vector2Int startPos = fallingTilesStartPos.Dequeue();
+                    uint id = fallingTilesID.Dequeue();
+                    TileIDs[i.x, i.y] = id;
+                    _boardAnimator.CollapseAnimation(startPos,i);
                 }// you are here
-                else PutRandomTile(new Vector2Int(i.x,y));
+                else
+                {
+                    uint id = PutRandomTile(i);
+                    _boardAnimator.CollapseNewTileAnimation(id,new Vector2Int(i.x,Size.y+1+generations),i);
+                    generations++;
+                }
             }
         }
     }
@@ -289,10 +309,11 @@ public sealed class Board : MonoBehaviour
             BlastMask.Add(pos);
         }
     }
-    private void PutRandomTile(Vector2Int pos)
+    private uint PutRandomTile(Vector2Int pos)
     {
         uint id = GameManager.Instance.GameConfig.TileDB.GetRandomID();
         PutTile(pos, id);
+        return id;
     }
     private void PutTile(Vector2Int pos, uint tileID)
     {
@@ -303,9 +324,24 @@ public sealed class Board : MonoBehaviour
         FallingLockMask[pos.x, pos.y] = false;
     }
 
+    private bool HasFallingTiles()
+    {
+        for (int x = 0; x < Size.x; x++)
+            for (int y = 0; y < Size.y; y++)
+                if (FallingLockMask[x, y]) return true;
+        return false;
+    }
+
     public bool IsPositionInBounds(Vector2Int pos)
     {
         if (pos.x < 0 || pos.x >= Size.x || pos.y < 0 || pos.y >= Size.y) return false;
         return true;
     }
+}
+[CreateAssetMenu(fileName = "LevelConfig",menuName = "Config/Level Config")]
+public class LevelConfig : ScriptableObject
+{
+    [field:SerializeField] public uint ID { get; private set; }
+    [field:SerializeField] public Vector2Int BoardSize { get; private set; }
+    
 }

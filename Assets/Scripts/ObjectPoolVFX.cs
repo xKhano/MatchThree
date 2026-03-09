@@ -6,13 +6,21 @@ public class ObjectPoolVFX : MonoBehaviour
 {
     public ObjectPooler Pool;
     [SerializeField] private ParticleSystem _particleSystem;
-
+    [SerializeField] private ParticleSystem _childParticle;
     private void OnEnable()
     {
-        StartCoroutine(ParticeRoutine());
+        StartCoroutine(ParticleRoutine());
     }
 
-    private IEnumerator ParticeRoutine()
+    public void ChangeColor(Color color)
+    {
+        ParticleSystem.MainModule module = _particleSystem.main;
+        ParticleSystem.MainModule childModule = _childParticle.main;
+        module.startColor = color;
+        childModule.startColor = color;
+    }
+
+    private IEnumerator ParticleRoutine()
     {
         _particleSystem.Play();
         yield return new WaitForSeconds(_particleSystem.main.duration);

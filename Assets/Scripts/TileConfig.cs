@@ -11,13 +11,21 @@ public class TileConfig : SerializedScriptableObject
     [field: SerializeField,VerticalGroup("SpriteRow/RightColumn")] public uint StartHealth { get; private set; } = 1;
     [field: SerializeField,VerticalGroup("SpriteRow/RightColumn")] public bool Fallable { get; private set; } = false;
     [field: SerializeField,VerticalGroup("SpriteRow/RightColumn")] public bool Interactable { get; private set; } = false;
+
+    [field: SerializeField, VerticalGroup("SpriteRow/RightColumn")]
+    public Color ReplacementColor { get; private set; } = Color.white;
     [field: SerializeField,] public bool Moveable { get; private set; } = true;
     [field: SerializeField] public GameObject BlastVFXPrefab { get; private set; } = null;
     
     [Title("Blast Patterns")]
     [ListDrawerSettings(DraggableItems = true, ShowPaging = false, Expanded = true)]
-    [field:SerializeField] public BlastPattern[] BlastPatterns { get; private set; }= null;
-    [field:SerializeField] public MatchRule[] MatchRules { get; private set; }
+    [SerializeField, AssetsOnly] private BlastPattern[] _blastPatterns;
+    public BlastPattern[] BlastPatterns => _blastPatterns;
+
+    [Title("Match Rules")]
+    [ListDrawerSettings(DraggableItems = true, ShowPaging = false, Expanded = true)]
+    [SerializeField, AssetsOnly] private MatchRule[] _matchRules;
+    public MatchRule[] MatchRules => _matchRules;
 }
 
 public abstract class BlastPattern : ScriptableObject

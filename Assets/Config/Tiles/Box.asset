@@ -9,13 +9,25 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 0}
+  m_Script: {fileID: 11500000, guid: c7a8d6247eb74986af9018e17d9b9a35, type: 3}
   m_Name: Box
   m_EditorClassIdentifier: Assembly-CSharp::TileConfig
+  serializationData:
+    SerializedFormat: 2
+    SerializedBytes: 
+    ReferencedUnityObjects: []
+    SerializedBytesString: 
+    Prefab: {fileID: 0}
+    PrefabModificationsReferencedUnityObjects: []
+    PrefabModifications: []
+    SerializationNodes: []
   <Sprite>k__BackingField: {fileID: 7499154508442906066, guid: 7c5a2cdb36f9e79428563b800337b903, type: 3}
   <Name>k__BackingField: Box
   <AnimatorController>k__BackingField: {fileID: 0}
   <StartHealth>k__BackingField: 1
   <Fallable>k__BackingField: 0
   <Interactable>k__BackingField: 0
+  <Moveable>k__BackingField: 1
   <BlastVFXPrefab>k__BackingField: {fileID: 0}
+  <BlastPatterns>k__BackingField: []
+  <MatchRules>k__BackingField: []

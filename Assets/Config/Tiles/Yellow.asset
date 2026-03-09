@@ -9,13 +9,28 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 0}
+  m_Script: {fileID: 11500000, guid: c7a8d6247eb74986af9018e17d9b9a35, type: 3}
   m_Name: Yellow
   m_EditorClassIdentifier: Assembly-CSharp::TileConfig
+  serializationData:
+    SerializedFormat: 2
+    SerializedBytes: 
+    ReferencedUnityObjects: []
+    SerializedBytesString: 
+    Prefab: {fileID: 0}
+    PrefabModificationsReferencedUnityObjects: []
+    PrefabModifications: []
+    SerializationNodes: []
   <Sprite>k__BackingField: {fileID: 21300000, guid: abe05e1e97443fa4bbbca1a37d54dfc6, type: 3}
   <Name>k__BackingField: Yellow
   <AnimatorController>k__BackingField: {fileID: 0}
   <StartHealth>k__BackingField: 1
   <Fallable>k__BackingField: 1
   <Interactable>k__BackingField: 0
+  <ReplacementColor>k__BackingField: {r: 1, g: 1, b: 0, a: 1}
+  <Moveable>k__BackingField: 1
   <BlastVFXPrefab>k__BackingField: {fileID: 0}
+  _blastPatterns:
+  - {fileID: 11400000, guid: 6725c64feae71ed468249313840eb4ac, type: 2}
+  _matchRules:
+  - {fileID: 11400000, guid: da1b72b8603e02840a10253a21d69005, type: 2}
