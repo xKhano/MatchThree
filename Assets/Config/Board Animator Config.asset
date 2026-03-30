@@ -13,5 +13,5 @@ MonoBehaviour:
   m_Name: Board Animator Config
   m_EditorClassIdentifier: Assembly-CSharp::DefaultNamespace.BoardAnimatorConfig
   <CellSlideDuration>k__BackingField: 0.1
-  <CellBlastDuration>k__BackingField: 0.25
-  <CellFallDuration>k__BackingField: 0.35
+  <CellBlastDuration>k__BackingField: 0.2
+  <CellFallDuration>k__BackingField: 0.41

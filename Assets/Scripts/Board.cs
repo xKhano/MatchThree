@@ -7,6 +7,7 @@ using UnityEngine;
 public sealed class Board : MonoBehaviour
 {
     public static Board Singleton { get; private set; }
+    
     public uint Moves { get; private set; }
     [field:SerializeField] public LevelConfig CurrentLevel { get; private set; }
     [SerializeField] private bool debugging = true;
@@ -31,15 +32,9 @@ public sealed class Board : MonoBehaviour
     private Vector3 lastMouseDelta;
 
     public event Action OnLevelSetup;
+    public event Func<TileConfig> OnTileBlast;
+    public event Func<Vector2Int> OnTileCollapseDone;
     
-    public enum MoveDirection
-    {
-        Directionless,
-        Right,
-        Left,
-        Up,
-        Down
-    }
     public void Awake()
     {
         Singleton = this;
@@ -71,36 +66,7 @@ public sealed class Board : MonoBehaviour
         CheckInput();
         if(Input.GetKeyDown(KeyCode.A)) _boardAnimator.Initialize(TileIDs);
     }
-    private void CheckInput()
-    {
-        if (Input.GetMouseButtonDown(0))
-        {
-            Vector2 mouseWorld = _cam.ScreenToWorldPoint(Input.mousePosition);
-            selectedPos = (Vector2Int)_grid.WorldToCell(mouseWorld);
-
-            if (IsPositionInBounds(selectedPos))
-            {
-                _isDragging = true;
-            }
-        }
-        if (_isDragging && Input.GetMouseButton(0))
-        {
-            //ondrag
-        }
-        if (_isDragging && Input.GetMouseButtonUp(0))
-        {
-            _isDragging = false; 
-            Vector2 mouseUpWorldPos = _cam.ScreenToWorldPoint(Input.mousePosition);
-            
-            var lastPos = (Vector2Int)_grid.WorldToCell(mouseUpWorldPos);
-            if(lastPos == selectedPos) DoMove(selectedPos,MoveDirection.Directionless);
-            else if (lastPos == selectedPos + Vector2Int.up)  DoMove(selectedPos,MoveDirection.Up);
-            else if (lastPos == selectedPos + Vector2Int.right) DoMove(selectedPos,MoveDirection.Right);
-            else if (lastPos == selectedPos + Vector2Int.down) DoMove(selectedPos, MoveDirection.Down);
-            else if (lastPos == selectedPos + Vector2Int.left) DoMove(selectedPos, MoveDirection.Left);
-        }
-    }
-    private void RandomGenerateTiles()
+    public void RandomGenerateTiles()
     {
         for (int i = 0; i < Size.y; i++)
         {
@@ -128,7 +94,7 @@ public sealed class Board : MonoBehaviour
         return true;
     }
 
-    private bool IsMoveableToCell(Vector2Int pos)
+    public bool IsMoveableToCell(Vector2Int pos)
     {
         uint tileId = TileIDs[pos.x, pos.y];
         TileConfig config = GameManager.Instance.GameConfig.TileDB.Get(tileId);
@@ -141,13 +107,13 @@ public sealed class Board : MonoBehaviour
     {
         if (MovePositionA == MovePositionB) //Tap
         {
-            SearchMatchesWholeBoard();
+            GetMatchesWholeBoard();
             if (MatchMask.Count < 1) yield break;
         }
         else //Slide
         {
             SwapCells(MovePositionA,MovePositionB);
-            SearchMatchesWholeBoard();
+            GetMatchesWholeBoard();
             yield return _boardAnimator.SlideAnimation(MovePositionA,MovePositionB);
             if (MatchMask.Count < 1) //no blasts
             {
@@ -174,13 +140,13 @@ public sealed class Board : MonoBehaviour
             BlastMask.Clear();
             CollapseTiles();
             while (HasFallingTiles()) yield return null;
-            SearchMatchesWholeBoard();
+            GetMatchesWholeBoard();
         } while (MatchMask.Count > 0);
         MatchMask.Clear();
         BlastMask.Clear();
     }
 
-    private void SearchMatchesWholeBoard()
+    private void GetMatchesWholeBoard()
     {
         for (Vector2Int pos = Vector2Int.zero; pos.y < Size.y; pos.y++)
         {
@@ -188,22 +154,6 @@ public sealed class Board : MonoBehaviour
             {
                 TryMatch(pos);
             }
-        }
-    }
-    private static Vector2Int GetDirectionVector(MoveDirection direction)
-    {
-        switch (direction)
-        {
-            case MoveDirection.Right:
-                return Vector2Int.right;
-            case MoveDirection.Left:
-                return Vector2Int.left;
-            case MoveDirection.Up:
-                return Vector2Int.up;
-            case MoveDirection.Down:
-                return Vector2Int.down;
-            default:
-                return Vector2Int.zero;
         }
     }
     private void CollapseTiles()
@@ -298,10 +248,11 @@ public sealed class Board : MonoBehaviour
     }
     
     private TileConfig GetTileType(Vector2Int pos) => GameManager.Instance.GameConfig.TileDB.Get(TileIDs[pos.x, pos.y]);
-    private void DamageTile(Vector2Int pos, uint amount = 1)
+    public void DamageTile(Vector2Int pos, uint amount = 1)
     {
         int x = pos.x;
         int y = pos.y;
+        if (!IsPositionInBounds(pos) || TileIDs[x, y] == 0) return;
         amount = (uint)Mathf.Clamp(amount, 0, TileHealths[x, y]);
         uint health = TileHealths[x, y] -= amount;
         if (health == 0)
@@ -336,6 +287,59 @@ public sealed class Board : MonoBehaviour
     {
         if (pos.x < 0 || pos.x >= Size.x || pos.y < 0 || pos.y >= Size.y) return false;
         return true;
+    }
+    public enum MoveDirection
+    {
+        Directionless,
+        Right,
+        Left,
+        Up,
+        Down
+    }
+    private static Vector2Int GetDirectionVector(MoveDirection direction)
+    {
+        switch (direction)
+        {
+            case MoveDirection.Right:
+                return Vector2Int.right;
+            case MoveDirection.Left:
+                return Vector2Int.left;
+            case MoveDirection.Up:
+                return Vector2Int.up;
+            case MoveDirection.Down:
+                return Vector2Int.down;
+            default:
+                return Vector2Int.zero;
+        }
+    }
+    private void CheckInput()
+    {
+        if (Input.GetMouseButtonDown(0))
+        {
+            Vector2 mouseWorld = _cam.ScreenToWorldPoint(Input.mousePosition);
+            selectedPos = (Vector2Int)_grid.WorldToCell(mouseWorld);
+
+            if (IsPositionInBounds(selectedPos))
+            {
+                _isDragging = true;
+            }
+        }
+        if (_isDragging && Input.GetMouseButton(0))
+        {
+            //ondrag
+        }
+        if (_isDragging && Input.GetMouseButtonUp(0))
+        {
+            _isDragging = false; 
+            Vector2 mouseUpWorldPos = _cam.ScreenToWorldPoint(Input.mousePosition);
+            
+            var lastPos = (Vector2Int)_grid.WorldToCell(mouseUpWorldPos);
+            if(lastPos == selectedPos) DoMove(selectedPos,MoveDirection.Directionless);
+            else if (lastPos == selectedPos + Vector2Int.up)  DoMove(selectedPos,MoveDirection.Up);
+            else if (lastPos == selectedPos + Vector2Int.right) DoMove(selectedPos,MoveDirection.Right);
+            else if (lastPos == selectedPos + Vector2Int.down) DoMove(selectedPos, MoveDirection.Down);
+            else if (lastPos == selectedPos + Vector2Int.left) DoMove(selectedPos, MoveDirection.Left);
+        }
     }
 }
 [CreateAssetMenu(fileName = "LevelConfig",menuName = "Config/Level Config")]

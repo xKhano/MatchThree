@@ -156,7 +156,7 @@ public class BoardAnimator : MonoBehaviour
         _elements[start.x, start.y] = null;
         _elements[end.x, end.y] = element;
         element.position = GetCellWorldPosition(start);
-        yield return Tween.Position(element, GetCellWorldPosition(end), _boardAnimatorConfig.CellFallDuration).ToYieldInstruction();
+        yield return Tween.Position(element, GetCellWorldPosition(end), _boardAnimatorConfig.CellFallDuration,Easing.Standard(Ease.InCubic)).ToYieldInstruction();
         Board.FallingLockMask[end.x, end.y] = false;
     }
     private IEnumerator NewTileCollapseRoutine(uint id,Vector2Int startTilePosition,Vector2Int end)
@@ -164,7 +164,7 @@ public class BoardAnimator : MonoBehaviour
         Transform element = GetNewTile(id);
         _elements[end.x, end.y] = element;
         element.position = GetCellWorldPosition(startTilePosition);
-        yield return Tween.Position(element, GetCellWorldPosition(end), _boardAnimatorConfig.CellFallDuration).ToYieldInstruction();
+        yield return Tween.Position(element, GetCellWorldPosition(end), _boardAnimatorConfig.CellFallDuration,Easing.Standard(Ease.InCubic)).ToYieldInstruction();
         Board.FallingLockMask[end.x, end.y] = false;
     }
 }

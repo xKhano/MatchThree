@@ -12,25 +12,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c7a8d6247eb74986af9018e17d9b9a35, type: 3}
   m_Name: Dynamite
   m_EditorClassIdentifier: Assembly-CSharp::TileConfig
-  serializationData:
-    SerializedFormat: 2
-    SerializedBytes: 
-    ReferencedUnityObjects: []
-    SerializedBytesString: 
-    Prefab: {fileID: 0}
-    PrefabModificationsReferencedUnityObjects: []
-    PrefabModifications: []
-    SerializationNodes: []
   <Sprite>k__BackingField: {fileID: 21300000, guid: 664c51822457d8f47b2d78c766a4c952, type: 3}
   <Name>k__BackingField: Barrel
   <AnimatorController>k__BackingField: {fileID: 0}
   <StartHealth>k__BackingField: 1
-  <Fallable>k__BackingField: 1
+  <Fallable>k__BackingField: 0
   <Interactable>k__BackingField: 0
   <ReplacementColor>k__BackingField: {r: 1, g: 1, b: 1, a: 1}
   <Moveable>k__BackingField: 1
   <BlastVFXPrefab>k__BackingField: {fileID: 0}
   _blastPatterns:
-  - {fileID: 0}
+  - {fileID: 11400000, guid: 8cac7588e46fd3e4186fba8604ef3688, type: 2}
   _matchRules:
-  - {fileID: 0}
+  - {fileID: 11400000, guid: ee218ec0276e78446bb8d79de0ac98ec, type: 2}

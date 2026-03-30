@@ -1,4 +1,3 @@
-using Sirenix.OdinInspector;
 using UnityEngine;
 
 public sealed class GameManager : MonoBehaviour
@@ -18,14 +17,14 @@ public sealed class GameManager : MonoBehaviour
     
 }
 [CreateAssetMenu(fileName = "Game Configuration", menuName = "Config/Game Config")]
-public sealed class GameConfig : SerializedScriptableObject
+public sealed class GameConfig : ScriptableObject
 {
     [field:SerializeField] public TileDatabase TileDB { get; private set; }
     [field:SerializeField] public LevelDatabase LevelDB { get; private set; }
 }
 
 [CreateAssetMenu(fileName = "Level Database", menuName = "Database/Level Database")]
-public sealed class LevelDatabase : SerializedScriptableObject
+public sealed class LevelDatabase : ScriptableObject
 {
     [field: SerializeField] private LevelData Levels;
 }

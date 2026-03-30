@@ -9,6 +9,6 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 0}
+  m_Script: {fileID: 11500000, guid: 255992e98e814c9a993e0ab33bb05ff1, type: 3}
   m_Name: Interactable Match Rule
   m_EditorClassIdentifier: Assembly-CSharp::InteractableMatchRule

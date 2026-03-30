@@ -12,15 +12,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c7a8d6247eb74986af9018e17d9b9a35, type: 3}
   m_Name: Green
   m_EditorClassIdentifier: Assembly-CSharp::TileConfig
-  serializationData:
-    SerializedFormat: 2
-    SerializedBytes: 
-    ReferencedUnityObjects: []
-    SerializedBytesString: 
-    Prefab: {fileID: 0}
-    PrefabModificationsReferencedUnityObjects: []
-    PrefabModifications: []
-    SerializationNodes: []
   <Sprite>k__BackingField: {fileID: 21300000, guid: 9e6235bf31b7ee044a8e1faca011b7c8, type: 3}
   <Name>k__BackingField: Green
   <AnimatorController>k__BackingField: {fileID: 0}
